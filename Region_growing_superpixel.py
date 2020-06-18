@@ -25,7 +25,7 @@ from skimage.segmentation import slic
 # from numba import jit
 
 
-#  Screen layout definitions
+#  View functions and definitions
 
 menu_def = [['File', ['Open image', 'Open Superpixel', 'Generate Superpixels',
                       'Load CSV file', 'Save mask', 'Exit']],
@@ -152,100 +152,142 @@ def paintSuperpixel(superpixel, target, image=None, index=None,
 def computeSuperpixelColor(image, superpixel):
     '''
     Compute the centroid color in a CIELab space for each superpixel.
-    
-    @param image: The reference image
-    @param superpixel: The superpixel image with the indexes for each pixel
-    @return superpixelColor: A list of colors with three colluns for each superpixel
+
+    Parameters
+    ----------
+    image : TYPE
+        The reference image in CIELab colors.
+    superpixel : TYPE
+        The superpixel image with the indexes for each pixel.
+
+    Returns
+    -------
+    superpixelColor : TYPE
+        Array of CieLAB colors for each Superpixel.
+
     '''
-    
+
     superpixelColor = np.zeros((superpixel.max()+1, 3))
-    
+
     for i in range(1, superpixel.max()+1):
         colorSum = []
         for j in range(0, np.shape(image)[0]):
             for k in range(0, np.shape(image)[1]):
                 if superpixel[j][k] == i:
                     colorSum.append(image[j][k])
-                   
 
-        colorSum = np.reshape(colorSum, (np.shape(colorSum)[0],np.shape(colorSum)[1]))
-        superpixelColor[i] = [np.median(colorSum[:,0]), np.median(colorSum[:,1]), np.median(colorSum[:,2])]
-    print('Colors computed')
+        colorSum = np.reshape(colorSum, (np.shape(colorSum)[0],
+                                         np.shape(colorSum)[1]))
+        superpixelColor[i] = [np.median(colorSum[:, 0]),
+                              np.median(colorSum[:, 1]),
+                              np.median(colorSum[:, 2])]
+
+    print('Superpixel colors computed')
     return superpixelColor
-
 
 
 def returnNeighbors(index, neighbors):
     '''
     Returns the superpixel neighbors of a given superpixel.
-    
-    @param index: Reference superpixel index
-    @param neighbors: Sparse matrix of superpixel neighbors
-    @retun temp: List of neighbors
-    '''
-    temp = neighbors[index:index+1,:]
-    return np.unique(np.sort(np.where(temp == True)[1]))
 
+    Parameters
+    ----------
+    index : TYPE
+        Reference superpixel index.
+    neighbors : TYPE
+        Sparse matrix of superpixel neighbors.
+
+    Returns
+    -------
+    TYPE
+        List of neighbors.
+
+    '''
+
+    temp = neighbors[index:index+1, :]
+    return np.unique(np.sort(np.where(temp is True)[1]))
 
 
 def setNeighbors(superpixel):
     '''
-    Computes neighbors of each superpixel by looking the indexes in each pixel of superpixel image.
-    
-    @param superpixel: Superpixel image with superpixel indexes
-    @return neighbors: Sparse matrix of superpixel neighbors
-    
+    Computes neighbors of each superpixel by looking the indexes in each pixel
+    of superpixel image.
+
+    Parameters
+    ----------
+    superpixel : TYPE
+        Superpixel array with annotated Superpixel for each pixel.
+
+    Returns
+    -------
+    neighbors : TYPE
+        Sparse matrix of superpixel neighbors.
+
     '''
+
     offset = 1
-    neighbors = np.full((superpixel.max()+1,superpixel.max()+1),False)
-    for i in range(1,np.shape(superpixel)[0]-2):
-        for j in range(1,np.shape(superpixel)[1]-2):
-            temp = superpixel[i-offset:i+offset+1, j-offset:j+offset+1].flatten()
+    neighbors = np.full((superpixel.max()+1, superpixel.max()+1), False)
+    for i in range(1, np.shape(superpixel)[0]-2):
+        for j in range(1, np.shape(superpixel)[1]-2):
+            temp = superpixel[i-offset:i+offset+1,
+                              j-offset:j+offset+1].flatten()
             for k in temp:
-                if k != superpixel[i,j]:
-                    neighbors[superpixel[i,j]][k] = True
-                    neighbors[k][superpixel[i,j]] = True
+                if k != superpixel[i, j]:
+                    neighbors[superpixel[i, j]][k] = True
+                    neighbors[k][superpixel[i, j]] = True
     print('Neighbors computed')
-    return neighbors    
+    return neighbors
 
 
 def compareSuperpixel(superpixelColor, target, tempColor, maxDist):
     '''
     Compare two superpixel colors by computing the distance in a CIELab space.
-    
-    @param superpixelColor: List of colors for each superpixel
-    @param target: Reference superpixel index to be compared
-    @param tempColor: Reference superpixel color to be compared
-    @param maxDist: Maximum acceptable distance
-    @return True if the computed distance is under the limit, False otherwise
-    
-    '''
-           
-    #L0 = tempColor[0,0]
-    L0 = np.median(tempColor[0,0])
-    L1 = superpixelColor[target][0]
-    
-    #a0 = tempColor[0,1]  #np.mean(tempColor[:,1])
-    a0 = np.median(tempColor[:,1])
-    a1 = superpixelColor[target][1]
-    
-    #b0 = tempColor[0,2] #np.mean(tempColor[:,2])
-    b0 = np.median(tempColor[:,2])
-    b1 = superpixelColor[target][2]
-    
-    dist = math.sqrt( math.pow((L1-L0),2) + math.pow((a1-a0),2) + math.pow((b1-b0),2))
 
-    print(dist)
+    Parameters
+    ----------
+    superpixelColor : TYPE
+        List of colors for each superpixel.
+    target : TYPE
+        Reference superpixel index to be compared.
+    tempColor : TYPE
+        Reference superpixel index to be compared.
+    maxDist : TYPE
+        Maximum acceptable distance in the CIELab space.
+
+    Returns
+    -------
+    bool
+        True if the computed distance is under maxDist value. False otherwise.
+
+    '''
+
+    # L0 = tempColor[0, 0]
+    L0 = np.median(tempColor[0, 0])
+    L1 = superpixelColor[target][0]
+
+    # a0 = tempColor[0,1]  #np.mean(tempColor[:,1])
+    a0 = np.median(tempColor[:, 1])
+    a1 = superpixelColor[target][1]
+
+    # b0 = tempColor[0,2] #np.mean(tempColor[:,2])
+    b0 = np.median(tempColor[:, 2])
+    b1 = superpixelColor[target][2]
+
+    dist = math.sqrt(math.pow((L1-L0), 2) + math.pow((a1-a0), 2)
+                     + math.pow((b1-b0), 2))
+
     if dist < maxDist:
         return True
     else:
         return False
-    
-    
-'''   
-def growingSuperpixel(superpixel, superpixelColor, image, mask, neighbors, seed, target, tempColor, classe, maxDist, canvas = False):
-    
-    #Given a target superpixel index the neighbors are analysed if within the max color distance.
+
+
+'''
+def growingSuperpixel(superpixel, superpixelColor, image, mask, neighbors,
+seed, target, tempColor, classe, maxDist, canvas = False):
+
+    # Given a target superpixel index the neighbors are analysed if within
+    # the max color distance.
     #Recursive depth search version. (not used)
 
     if visited[target] == True:
@@ -254,8 +296,9 @@ def growingSuperpixel(superpixel, superpixelColor, image, mask, neighbors, seed,
     if superpixelClass[target] > 0:
         #print('exit marked')
         return False
-        
-    if compareSuperpixel(superpixelColor, target, tempColor, sigmaH, sigmaS, sigmaV) == True:
+
+    if compareSuperpixel(superpixelColor, target, tempColor, sigmaH, sigmaS,
+    sigmaV) == True:
         #print('Comparing ' + str(target) + ' ' + str(seed))
         superpixelClass[target] = classe
         visited[target] = True
@@ -264,7 +307,7 @@ def growingSuperpixel(superpixel, superpixelColor, image, mask, neighbors, seed,
         if classe == 1: color = [255,0,0]
         if classe == 2: color = [0,255,0]
         if classe == 3: color = [0,0,255]
-            
+
         mask = paintSuperpixel(superpixel, mask, image, target, color)
         if canvas:
             temp = updateCanvas(mask, hor, ver)
@@ -272,59 +315,84 @@ def growingSuperpixel(superpixel, superpixelColor, image, mask, neighbors, seed,
         visited[target] = True
         #print('exit outside threshold ' + str(target) + ' ' + str(seed))
         return False
-    
+
     temp = returnNeighbors(target, neighbors)
-    
     for k in temp:
-        growingSuperpixel(superpixel, superpixelColor, image, mask, neighbors, seed, k, tempColor, classe, maxDist, canvas)
+        growingSuperpixel(superpixel, superpixelColor, image, mask, neighbors,
+        seed, k, tempColor, classe, maxDist, canvas)
     return
 '''
 
 
-def growingSuperpixelBreadth(superpixel, superpixelColor, image, mask, neighbors, seed, target, tempColor, classe, maxDist, canvas = False): 
+def growingSuperpixelBreadth(superpixel, superpixelColor, image, mask,
+                             neighbors, seed, target, tempColor, classe,
+                             maxDist, canvas=False):
     '''
-    Given a target superpixel index the neighbors are analysed if within the max color distance.
-    Breadth search version.
-    
-    @param superpixel: 
-    @param superpixelColor:
-    @param image:
-    @param mask:
-    @param neighbors:
-    @param seed:
-    @param target:
-    @param tempColor:
-    @param classe:
-    @param maxDist:
-    @param canvas:
+    Given a target superpixel index the neighbors are analysed if within the
+    max color distance. Uses breadth search.
+
+    Parameters
+    ----------
+    superpixel : TYPE
+        Superpixel array with annotated Superpixel for each pixel.
+    superpixelColor : TYPE
+        List of colors for each superpixel.
+    image : TYPE
+        RGB image.
+    mask : TYPE
+        RGB mask image to be drawn.
+    neighbors : TYPE
+        DESCRIPTION.
+    seed : TYPE
+        Initial target.
+    target : TYPE
+        Initial target.
+    tempColor : TYPE
+        Initial reference color.
+    classe : TYPE
+        Which class to be painted.
+    maxDist : TYPE
+        Maximum acceptable distance in the CIELab space.
+    canvas : TYPE, optional
+        DESCRIPTION. The default is False.
+
+    Returns
+    -------
+    None.
+
     '''
-    
+
     queue = []
     queue.append(target)
-    #visited[target] = True
-    
-    
-    if classe == 1: color = [255,0,0]
-    if classe == 2: color = [0,255,0]
-    if classe == 3: color = [0,0,255]
-    
-    
+    # visited[target] = True
+
+    if classe == 1:
+        color = [255, 0, 0]
+    if classe == 2:
+        color = [0, 255, 0]
+    if classe == 3:
+        color = [0, 0, 255]
+
     mask = paintSuperpixel(superpixel, mask, image, target, color)
-    
+
     while queue:
         s = queue.pop(0)
         print("Pop " + str(s))
         temp = returnNeighbors(s, neighbors)
         for k in temp:
-            #if visited[s] == False:
+            # if visited[s] == False:
             if True:
-                if compareSuperpixel(superpixelColor, k, tempColor, maxDist) == True:
-                    if visited[k] == False or superpixelClass[k] == 0:
+                if compareSuperpixel(superpixelColor, k, tempColor,
+                                     maxDist) is True:
+                    if visited[k] is False or superpixelClass[k] == 0:
                         queue.append(k)
                         print("Push " + str(k))
-                        tempColor = np.insert(tempColor, 0, superpixelColor[k], 0)
-                        tempColor = np.reshape(tempColor, (int(np.size(tempColor)/3),3))
-                        mask = paintSuperpixel(superpixel, mask, image, k, color)
+                        tempColor = np.insert(tempColor, 0,
+                                              superpixelColor[k], 0)
+                        tempColor = np.reshape(tempColor,
+                                               (int(np.size(tempColor)/3), 3))
+                        mask = paintSuperpixel(superpixel, mask, image, k,
+                                               color)
                         if canvas:
                             temp = updateCanvas(mask, hor, ver)
                         superpixelClass[k] = classe
@@ -333,120 +401,127 @@ def growingSuperpixelBreadth(superpixel, superpixelColor, image, mask, neighbors
         if np.size(queue) > 50:
             print(queue)
             queue = []
+    return
 
-        
-def showImage (image):
+
+def showImage(image):
     '''
-    Show a given image in the system's image visualiser
-    
-    @param image: Image to be shown    
+    Open a image with the OS image viewer
+
+    Parameters
+    ----------
+    image : TYPE
+        Numpy array of a RGB or grayscale image.
+
+    Returns
+    -------
+    None.
+
     '''
+
     pil_img = Image.fromarray(image)
     pil_img.show()
-    
-  
-    
+
+    return
+
+# Controler section
+
 
 while True:
     event, values = window.Read()
-    
     try:
         hor = int(values["_Sl_horizontal_"])
         ver = int(values["_Sl_vertical_"])
     except Exception as e:
         print(e)
-        
-    
+
     if event is None or event == 'Exit':
-        break  
+        break
     elif event == 'Open image':
-        #hor = int(values["_Sl_horizontal_"])
-        #ver = int(values["_Sl_vertical_"])
-        
+
         address = sg.PopupGetFile('Document to open')
-        #address = 'D:/Ademir/Coding/datasets/image1/0055.png'
-        
-        
-        try: 
+        # address = 'D:/Ademir/Coding/datasets/image1/0055.png'
+
+        try:
             file = open(address, 'rb').read()
             try:
-                image = cv2.imdecode(np.frombuffer(file, np.uint8), 1) # 0 in the case of grayscale images
-                #image = cv2.bilateralFilter(image, 10, 75, 75)
+                image = cv2.imdecode(np.frombuffer(file, np.uint8), 1)
+                # 0 in the case of grayscale images
+
+                # image = cv2.bilateralFilter(image, 10, 75, 75)
                 mask = np.copy(image)
                 original = np.copy(image)
                 temp = updateCanvas(image, hor, ver)
-                #window.Element("_Bt_Smooth_").Update(disabled=False)
+                # window.Element("_Bt_Smooth_").Update(disabled=False)
 
             except ValueError:
                 sg.Popup(ValueError)
         except Exception as e:
             sg.Popup(e)
-            
-            
+
     elif event == 'Open Superpixel':
-        #hor = int(values["_Sl_horizontal_"])
-        #ver = int(values["_Sl_vertical_"])
-        
-        
+
         address = sg.PopupGetFile('Document to open')
-        #address = 'D:/Ademir/Coding/datasets/image1-superpixels2000/0055.png'
-        
+
+        # address = 'D:/Ademir/Coding/datasets/image1-superpixels2000/0055.png'
+
         try:
             superpixel = Image.open(address)
             superpixel = np.asarray(superpixel)
-            #superpixel = superpixel.transpose()
+            # superpixel = superpixel.transpose()
         except Exception as e:
             sg.Popup(e)
-            
+
     elif event == 'Generate Superpixels':
-        
-        sp_layout = [  [sg.Text('Some text on Row 1')],
-            [sg.Text('Quantity:'), sg.InputText()],
-            [sg.Button('Ok'), sg.Button('Cancel')] ]
-        
+
+        # View popup to receive Superpixel parameters
+        sp_layout = [[sg.Text('Some text on Row 1')],
+                     [sg.Text('Quantity:'), sg.InputText()],
+                     [sg.Button('Ok'), sg.Button('Cancel')]]
+
         sp_window = sg.Window('Slic Superpixels', sp_layout)
-        
+
         while True:
             sp_event, sp_values = sp_window.read()
-            if sp_event in (None, 'Cancel'):   # if user closes window or clicks cancel
+            if sp_event in (None, 'Cancel'):  # if user closes or cancel
                 break
             if sp_event == 'Ok':
                 try:
                     del(neighbors)
-                except:
+                except Exception:
                     print('')
                 try:
                     del(superpixelColors)
-                except:
+                except Exception:
                     print('')
                 try:
                     del(superpixelClass)
-                except:
+                except Exception:
                     print('')
                 try:
                     del(visited)
-                except:
+                except Exception:
                     print('')
-                break        
-        sp_window.close()
-        
+                break
+            sp_window.close()
+
         try:
-            superpixel = slic(image, n_segments=int(sp_values[0]), compactness=40)
+            superpixel = slic(image, n_segments=int(sp_values[0]),
+                              compactness=40)
         except Exception as e:
             print(e)
-            
+
     elif event == 'Load CSV file':
-        
+
         address = sg.PopupGetFile('Document to open')
-        
-        if address != None:
+
+        if address is not None:
             neighbors = setNeighbors(superpixel)
             labImage = cv2.cvtColor(image, cv2.COLOR_BGR2Lab)
             superpixelColor = computeSuperpixelColor(labImage, superpixel)
             superpixelClass = np.zeros((superpixel.max()+1))
             visited = np.full((superpixel.max()+1), False)
-            
-            
+
             superpixelClass = np.zeros((superpixel.max()+1))
             visited = np.full((superpixel.max()+1), False)
             mask = np.copy(image)
@@ -455,26 +530,27 @@ while True:
                 line_count = 0
                 for row in csv_reader:
                     if line_count != 0:
-                        #image[1,2] = red
-                        #image[int(row[1]),int(row[0])] = red
-                        #image = cv2.circle(image, (int(row[1])-1,int(row[0])-1), 5, red, -1)
-                        target = superpixel[int(row[0])-1,int(row[1])-1]
+                        # image[1,2] = red
+                        # image[int(row[1]),int(row[0])] = red
+                        # image = cv2.circle(image, (int(row[1])-1,
+                        #                    int(row[0])-1), 5, red, -1)
+                        target = superpixel[int(row[0])-1, int(row[1])-1]
                         tempColor = superpixelColor[target]
-                        tempColor = np.reshape(tempColor, (int(np.size(tempColor)/3),3))
-                        #growingSuperpixelBreadth(superpixel, superpixelColor, image, mask, neighbors, target_0, target_0, tempColor, 1, 19, False)
-                        growingSuperpixelBreadth(superpixel, superpixelColor, image, mask, neighbors, target, target, tempColor, classe, maxDist, True)
-                        #pontos.append([int(row[1]),int(row[0])])
-                        #image = cv2.circle(image, (500,500), 10, red, 3)
+                        tempColor = np.reshape(tempColor, (int(np.size(
+                                                           tempColor)/3), 3))
+                        growingSuperpixelBreadth(superpixel, superpixelColor,
+                                                 image, mask, neighbors,
+                                                 target, target, tempColor,
+                                                 classe, maxDist, True)
+                        # pontos.append([int(row[1]),int(row[0])])
+                        # image = cv2.circle(image, (500,500), 10, red, 3)
                         line_count = line_count + 1
-                    line_count = line_count + 1        
-        
-        
-            
+                    line_count = line_count + 1
+
     elif event == '_Sl_horizontal_' or event == '_Sl_vertical_':
-        #hor = int(values["_Sl_horizontal_"])
-        #ver = int(values["_Sl_vertical_"])
+
         temp = updateCanvas(temp, hor, ver)
-        
+
     elif event == 'Class 1':
         active_class = 'class1'
         temp = updateCanvas(mask, hor, ver)
@@ -487,61 +563,71 @@ while True:
         active_class = 'class3'
         temp = updateCanvas(mask, hor, ver)
         window.Element("_Tx_selected_").Update(value='Class 3 selected')
-        
+
     elif event == 'Original':
         try:
             temp = updateCanvas(original, hor, ver)
         except Exception as e:
             print(e)
     elif event == 'Extrapolate':
-        
+
         try:
             maxDist = float(values["_In_sigmaH_"])
         except Exception as e:
             print(e)
-            
-        
-        
+
         visited = np.full((superpixel.max()+1), False)
-        
+
         try:
             np.shape(neighbors)
             np.shape(superpixelColor)
-        except:
+        except Exception:
             neighbors = setNeighbors(superpixel)
             labImage = cv2.cvtColor(image, cv2.COLOR_BGR2Lab)
             superpixelColor = computeSuperpixelColor(labImage, superpixel)
             superpixelClass = np.zeros((superpixel.max()+1))
             visited = np.full((superpixel.max()+1), False)
 
-          
         try:
-            tempColor = superpixelColor[superpixel[y,x]]
-            tempColor = np.reshape(tempColor, (int(np.size(tempColor)/3),3))
-            print("Origin "+ str(tempColor[:,2][0]))
-            #growingSuperpixel(superpixel, superpixelColor, image, mask, neighbors, superpixel[x,y], superpixel[x,y], tempColor, classe, maxDist, True)
-            growingSuperpixelBreadth(superpixel, superpixelColor, image, mask, neighbors, superpixel[y,x], superpixel[y,x], tempColor, classe, maxDist, True)
+            tempColor = superpixelColor[superpixel[y, x]]
+            tempColor = np.reshape(tempColor, (int(np.size(tempColor)/3), 3))
+            print("Origin " + str(tempColor[:, 2][0]))
+
+            growingSuperpixelBreadth(superpixel, superpixelColor, image, mask,
+                                     neighbors, superpixel[y, x],
+                                     superpixel[y, x], tempColor, classe,
+                                     maxDist, True)
         except Exception as e:
             print(e)
-        
 
     elif event == 'Fill':
+
         if active_class == 'class1':
-            for i in range(0,np.shape(image)[0]-1):
-                for j in range(0,np.shape(image)[1]-1):
-                    if (mask[i,j][1] !=  255 and mask[i,j][1] !=  0 and mask[i,j][2] !=  0):
-                        if (mask[i,j][1] !=  0 and mask[i,j][1] !=  255 and mask[i,j][2] !=  0):
-                            if (mask[i,j][1] !=  0 and mask[i,j][1] !=  0 and mask[i,j][2] !=  255):
-                                mask[i,j] = [255,0,0]
+            for i in range(0, np.shape(image)[0]-1):
+                for j in range(0, np.shape(image)[1]-1):
+                    if (mask[i, j][1] != 255 and mask[i, j][1] != 0
+                            and mask[i, j][2] != 0):
+
+                        if (mask[i, j][1] != 0 and mask[i, j][1] != 255
+                                and mask[i, j][2] != 0):
+
+                            if (mask[i, j][1] != 0 and mask[i, j][1] != 0
+                                    and mask[i, j][2] != 255):
+                                mask[i, j] = [255, 0, 0]
 
         temp = updateCanvas(mask, hor, ver)
         if active_class == 'class2':
-            for i in range(0,np.shape(image)[0]-1):
-                for j in range(0,np.shape(image)[1]-1):
-                    if (mask[i,j][1] !=  255 and mask[i,j][1] !=  0 and mask[i,j][2] !=  0):
-                        if (mask[i,j][1] !=  0 and mask[i,j][1] !=  255 and mask[i,j][2] !=  0):
-                            if (mask[i,j][1] !=  0 and mask[i,j][1] !=  0 and mask[i,j][2] !=  255):
-                                mask[i,j] = [0,255,0]
+            for i in range(0, np.shape(image)[0]-1):
+                for j in range(0, np.shape(image)[1]-1):
+                    if (mask[i, j][1] != 255 and mask[i, j][1] != 0
+                            and mask[i, j][2] != 0):
+
+                        if (mask[i, j][1] != 0 and mask[i, j][1] != 255
+                                and mask[i, j][2] != 0):
+
+                            if (mask[i, j][1] != 0 and mask[i, j][1] != 0
+                                    and mask[i, j][2] != 255):
+                                mask[i, j] = [0, 255, 0]
 
         temp = updateCanvas(mask, hor, ver)
         if active_class == 'class3':
@@ -553,72 +639,70 @@ while True:
                                 mask[i,j] = [0,0,255]
 
         temp = updateCanvas(mask, hor, ver)
-        
 
     elif event == 'Reset':
         superpixelClass = np.zeros((superpixel.max()+1))
         visited = np.full((superpixel.max()+1), False)
-        
+
         if active_class == 'class1':
-            for i in range(0,np.shape(image)[0]-1):
-                for j in range(0,np.shape(image)[1]-1):
-                    if (mask[i,j][0] ==  255 and mask[i,j][1] ==  0 and mask[i,j][2] ==  0):
+            for i in range(0, np.shape(image)[0]-1):
+                for j in range(0, np.shape(image)[1]-1):
+                    if (mask[i, j][0] == 255 and mask[i, j][1] == 0 and mask[i, j][2] == 0):
                         mask[i,j] = original[i,j]
-                        
+
         if active_class == 'class2':
             for i in range(0,np.shape(image)[0]-1):
                 for j in range(0,np.shape(image)[1]-1):
                     if (mask[i,j][0] ==  0 and mask[i,j][1] ==  255 and mask[i,j][2] ==  0):
                         mask[i,j] = original[i,j]
-                        
+
         if active_class == 'class3':
             for i in range(0,np.shape(image)[0]-1):
                 for j in range(0,np.shape(image)[1]-1):
                     if (mask[i,j][0] ==  0 and mask[i,j][1] ==  0 and mask[i,j][2] ==  255):
                         mask[i,j] = original[i,j]
-                        
+
         temp = updateCanvas(mask, hor, ver)
-        
-        
+
     elif event == '_Canvas1_':
         position = values['_Canvas1_']
-        #hor = int(values["_Sl_horizontal_"])
-        #ver = int(values["_Sl_vertical_"])
+
         try:
             size = canvas1.CanvasSize
             positionX = int(np.shape(image)[1]/100*hor)
             positionY = int(np.shape(image)[0]/100*ver)
-            if positionX > np.shape(image)[1]-size[1]: positionX = np.shape(image)[1]-size[1]-1
-            if positionY > (np.shape(image)[0]-size[0]): positionY = np.shape(image)[0]-size[0]-1
+            if positionX > np.shape(image)[1]-size[1]:
+                positionX = np.shape(image)[1]-size[1]-1
+            if positionY > (np.shape(image)[0]-size[0]):
+                positionY = np.shape(image)[0]-size[0]-1
             x = positionX+position[0]
             y = positionY+abs(position[1]-size[1])
-            print(x,y)
-            
-            
+            print(x, y)
+
             try:
                 if active_class == 'class1':
                     classe = 1
-                    color = [255,0,0]
+                    color = [255, 0, 0]
 
                 if active_class == 'class2':
                     classe = 2
-                    color = [0,255,0]
-                    
+                    color = [0, 255, 0]
 
                 if active_class == 'class3':
                     classe = 3
-                    color = [0,0,255]
-                    
-                mask = paintSuperpixel(superpixel, mask, image, superpixel[y,x], color)
+                    color = [0, 0, 255]
+
+                mask = paintSuperpixel(superpixel, mask, image,
+                                       superpixel[y, x], color)
                 temp = updateCanvas(mask, hor, ver)
             except Exception as e:
                 print(e)
-                                
+
         except Exception as e:
             print(e)
-            
-    print(event, values)
-     
+
+    # print(event, values)
+
 window.Close()
 
 
