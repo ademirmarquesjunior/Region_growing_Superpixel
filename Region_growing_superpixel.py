@@ -16,7 +16,7 @@ import csv
 import base64
 from io import BytesIO
 from skimage.segmentation import slic
-# from numba import jit
+#from numba import jit
 
 
 #  View functions and definitions
@@ -118,6 +118,7 @@ def updateCanvas(image, hor, ver):
     return image
 
 
+@jit(nopython=True)
 def paintSuperpixel(superpixel, target, image=None, index=None,
                     color=[255, 255, 255]):
     '''
