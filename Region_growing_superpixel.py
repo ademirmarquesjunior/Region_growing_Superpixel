@@ -10,18 +10,12 @@ Created on Sat Nov  2 15:42:01 2019
 import cv2
 import numpy as np
 import PySimpleGUI as sg
-
-
 from PIL import Image
 import math
-
 import csv
-
 import base64
 from io import BytesIO
-
 from skimage.segmentation import slic
-
 # from numba import jit
 
 
@@ -57,7 +51,8 @@ window = sg.Window('Superpixel Growing Segmentation', layout)
 canvas1 = window.Element("_Canvas1_")
 temp = np.zeros(canvas1.CanvasSize)
 
-# Initial global values
+# Global values initialization
+
 y = 0
 x = 0
 maxDist = 19
@@ -65,6 +60,8 @@ active_class = 'class1'
 classe = 1
 
 tempColor = []
+
+# View functions
 
 
 def updateCanvas(image, hor, ver):
@@ -89,8 +86,8 @@ def updateCanvas(image, hor, ver):
 
     '''
 
-    if np.size(np.shape(image)) == 3:
-        image = cv2.cvtColor(np.uint8(image), cv2.COLOR_BGR2RGB)
+    # if np.size(np.shape(image)) == 3:
+    #     image = cv2.cvtColor(np.uint8(image), cv2.COLOR_BGR2RGB)
 
     size = canvas1.CanvasSize
     positionX = int(np.shape(image)[1]/100*hor)
@@ -102,18 +99,22 @@ def updateCanvas(image, hor, ver):
         positionY = np.shape(image)[0]-size[0]-1
 
     try:
+        # Create buffer
         buffered = BytesIO()
 
+        # Save image to buffer
         Image.fromarray(np.uint8(image[positionY:size[0]+positionY,
                                        positionX:size[1]+positionX])
                         ).save(buffered, format="PNG")
 
+        # Encode buffer to binary
         encoded = base64.b64encode(buffered.getvalue())
+
+        # Load encoded image buffer to canvas
         canvas1.DrawImage(data=encoded, location=(0, 500))
         canvas1.Update()
     except Exception as e:
-        print(e)
-
+        print("Update canvas " + str(e))
     return image
 
 
@@ -205,7 +206,7 @@ def returnNeighbors(index, neighbors):
     '''
 
     temp = neighbors[index:index+1, :]
-    return np.unique(np.sort(np.where(temp is True)[1]))
+    return np.unique(np.sort(np.where(temp == True)[1]))
 
 
 def setNeighbors(superpixel):
@@ -354,7 +355,7 @@ def growingSuperpixelBreadth(superpixel, superpixelColor, image, mask,
     maxDist : TYPE
         Maximum acceptable distance in the CIELab space.
     canvas : TYPE, optional
-        DESCRIPTION. The default is False.
+        If True forces canvas update. The default is False.
 
     Returns
     -------
@@ -377,7 +378,7 @@ def growingSuperpixelBreadth(superpixel, superpixelColor, image, mask,
 
     while queue:
         s = queue.pop(0)
-        print("Pop " + str(s))
+        # print("Pop " + str(s))
         temp = returnNeighbors(s, neighbors)
         for k in temp:
             # if visited[s] == False:
@@ -386,7 +387,7 @@ def growingSuperpixelBreadth(superpixel, superpixelColor, image, mask,
                                      maxDist) is True:
                     if visited[k] is False or superpixelClass[k] == 0:
                         queue.append(k)
-                        print("Push " + str(k))
+                        # print("Push " + str(k))
                         tempColor = np.insert(tempColor, 0,
                                               superpixelColor[k], 0)
                         tempColor = np.reshape(tempColor,
@@ -429,6 +430,7 @@ def showImage(image):
 
 while True:
     event, values = window.Read()
+
     try:
         hor = int(values["_Sl_horizontal_"])
         ver = int(values["_Sl_vertical_"])
@@ -483,27 +485,18 @@ while True:
 
         while True:
             sp_event, sp_values = sp_window.read()
-            if sp_event in (None, 'Cancel'):  # if user closes or cancel
+            if sp_event in (None, 'Cancel'):
                 break
             if sp_event == 'Ok':
                 try:
                     del(neighbors)
-                except Exception:
-                    print('')
-                try:
                     del(superpixelColors)
-                except Exception:
-                    print('')
-                try:
                     del(superpixelClass)
-                except Exception:
-                    print('')
-                try:
                     del(visited)
                 except Exception:
-                    print('')
+                    print('No data to clean')
                 break
-            sp_window.close()
+        sp_window.close()
 
         try:
             superpixel = slic(image, n_segments=int(sp_values[0]),
@@ -631,12 +624,17 @@ while True:
 
         temp = updateCanvas(mask, hor, ver)
         if active_class == 'class3':
-            for i in range(0,np.shape(image)[0]-1):
-                for j in range(0,np.shape(image)[1]-1):
-                    if (mask[i,j][1] !=  255 and mask[i,j][1] !=  0 and mask[i,j][2] !=  0):
-                        if (mask[i,j][1] !=  0 and mask[i,j][1] !=  255 and mask[i,j][2] !=  0):
-                            if (mask[i,j][1] !=  0 and mask[i,j][1] !=  0 and mask[i,j][2] !=  255):
-                                mask[i,j] = [0,0,255]
+            for i in range(0, np.shape(image)[0]-1):
+                for j in range(0, np.shape(image)[1]-1):
+                    if (mask[i, j][1] != 255 and mask[i, j][1] != 0
+                            and mask[i, j][2] != 0):
+
+                        if (mask[i, j][1] != 0 and mask[i, j][1] != 255
+                                and mask[i, j][2] != 0):
+
+                            if (mask[i, j][1] != 0 and mask[i, j][1] != 0
+                                    and mask[i, j][2] != 255):
+                                mask[i, j] = [0, 0, 255]
 
         temp = updateCanvas(mask, hor, ver)
 
@@ -647,20 +645,23 @@ while True:
         if active_class == 'class1':
             for i in range(0, np.shape(image)[0]-1):
                 for j in range(0, np.shape(image)[1]-1):
-                    if (mask[i, j][0] == 255 and mask[i, j][1] == 0 and mask[i, j][2] == 0):
-                        mask[i,j] = original[i,j]
+                    if (mask[i, j][0] == 255 and mask[i, j][1] == 0
+                            and mask[i, j][2] == 0):
+                        mask[i, j] = original[i, j]
 
         if active_class == 'class2':
-            for i in range(0,np.shape(image)[0]-1):
-                for j in range(0,np.shape(image)[1]-1):
-                    if (mask[i,j][0] ==  0 and mask[i,j][1] ==  255 and mask[i,j][2] ==  0):
-                        mask[i,j] = original[i,j]
+            for i in range(0, np.shape(image)[0]-1):
+                for j in range(0, np.shape(image)[1]-1):
+                    if (mask[i, j][0] == 0 and mask[i, j][1] == 255
+                            and mask[i, j][2] == 0):
+                        mask[i, j] = original[i, j]
 
         if active_class == 'class3':
-            for i in range(0,np.shape(image)[0]-1):
-                for j in range(0,np.shape(image)[1]-1):
-                    if (mask[i,j][0] ==  0 and mask[i,j][1] ==  0 and mask[i,j][2] ==  255):
-                        mask[i,j] = original[i,j]
+            for i in range(0, np.shape(image)[0]-1):
+                for j in range(0, np.shape(image)[1]-1):
+                    if (mask[i, j][0] == 0 and mask[i, j][1] == 0
+                            and mask[i, j][2] == 255):
+                        mask[i, j] = original[i, j]
 
         temp = updateCanvas(mask, hor, ver)
 
@@ -671,10 +672,12 @@ while True:
             size = canvas1.CanvasSize
             positionX = int(np.shape(image)[1]/100*hor)
             positionY = int(np.shape(image)[0]/100*ver)
+
             if positionX > np.shape(image)[1]-size[1]:
                 positionX = np.shape(image)[1]-size[1]-1
             if positionY > (np.shape(image)[0]-size[0]):
                 positionY = np.shape(image)[0]-size[0]-1
+
             x = positionX+position[0]
             y = positionY+abs(position[1]-size[1])
             print(x, y)
@@ -704,108 +707,3 @@ while True:
     # print(event, values)
 
 window.Close()
-
-
-'''
-################################################################################################
-
-
-new = np.zeros(np.shape(image))
-
-for i in range(1,np.shape(superpixel)[0]):
-    for j in range(1,np.shape(superpixel)[1]):
-        new[i,j] = superpixelColor[superpixel[i,j]]
-        
-showImage(cv2.cvtColor(np.uint8(new), cv2.COLOR_Lab2RGB))
-
-
-showImage(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
-showImage(superpixel/10)
-##############################################################################################################
-
-
-seed = 1921
-target = seed
-classe = 1
-superpixelClass = np.zeros((superpixel.max()+1))
-visited = np.full((superpixel.max()+1), False)
-mask = np.copy(image)
-
-    
-neighbors = setNeighbors(superpixel)
-colors0 = superpixelColor
-labImage = cv2.cvtColor(image, cv2.COLOR_BGR2Lab)
-superpixelColor = computeSuperpixelColor(labImage, superpixel)
-
-
-tempColor = superpixelColor[seed]
-tempColor = np.reshape(tempColor, (int(np.size(tempColor)/3),3))
-growingSuperpixelBreadth(superpixel, superpixelColor, image, mask, neighbors, seed, target, tempColor, 1, 19, False)
-            
-
-
-
-##############################################################################################################
-
-import csv
-
-imageNum = '0055'
-
-address = 'D:/Ademir/Coding/datasets/image1/'+ imageNum +'.png'
-try: 
-    file = open(address, 'rb').read()
-    image = cv2.imdecode(np.frombuffer(file, np.uint8), 1) # 0 in the case of grayscale images
-    mask = np.copy(image)
-except Exception as e:
-    sg.Popup(e)  
-    
-#image = cv2.bilateralFilter(image, 10, 75, 75)
-#image = cv2.GaussianBlur(image,(7,7),1)
-    
-address = 'D:/Ademir/Coding/datasets/image1-superpixels2000/'+ imageNum +'.png' #0056
-try:
-    superpixel = Image.open(address)
-    superpixel = np.asarray(superpixel)
-    #superpixel = superpixel.transpose()
-except Exception as e:
-    sg.Popup(e)
-
-neighbors = setNeighbors(superpixel)
-labImage = cv2.cvtColor(image, cv2.COLOR_BGR2Lab)
-superpixelColor = computeSuperpixelColor(labImage, superpixel)
-
-
-superpixelClass = np.zeros((superpixel.max()+1))
-visited = np.full((superpixel.max()+1), False)
-mask = np.copy(image)
-with open('D:/Ademir/Coding/datasets/Eniuce/image1points26tiles/PointsInsideFracturesArapuaPrio4'+ imageNum + '.png.csv') as csv_file:
-    csv_reader = csv.reader(csv_file, delimiter=';', )
-    line_count = 0
-    for row in csv_reader:
-        if line_count != 0:
-            #image[1,2] = red
-            #image[int(row[1]),int(row[0])] = red
-            #image = cv2.circle(image, (int(row[1])-1,int(row[0])-1), 5, red, -1)
-            target_0 = superpixel[int(row[0])-1,int(row[1])-1]
-            tempColor = superpixelColor[target_0]
-            tempColor = np.reshape(tempColor, (int(np.size(tempColor)/3),3))
-            growingSuperpixelBreadth(superpixel, superpixelColor, image, mask, neighbors, target_0, target_0, tempColor, 1, 19, False)
-            #pontos.append([int(row[1]),int(row[0])])
-            #image = cv2.circle(image, (500,500), 10, red, 3)
-            line_count = line_count + 1
-        line_count = line_count + 1
-showImage(mask)
-
-
-image_points = np.copy(image)
-red = [255,0,0]
-with open('D:/Ademir/Coding/datasets/Eniuce/image1points26tiles/PointsInsideFracturesArapuaPrio4'+imageNum+'.png.csv') as csv_file:
-    csv_reader = csv.reader(csv_file, delimiter=';', )
-    line_count = 0
-    for row in csv_reader:
-        if line_count != 0:
-            image_points = cv2.circle(image_points, (int(row[1])-1,int(row[0])-1), 2, red, 1)
-            line_count = line_count + 1
-        line_count = line_count + 1
-showImage(image_points)
-'''
