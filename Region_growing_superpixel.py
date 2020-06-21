@@ -16,7 +16,7 @@ import csv
 import base64
 from io import BytesIO
 from skimage.segmentation import slic
-#from numba import jit
+from numba import jit
 
 
 #  View functions and definitions
@@ -118,7 +118,6 @@ def updateCanvas(image, hor, ver):
     return image
 
 
-@jit(nopython=True)
 def paintSuperpixel(superpixel, target, image=None, index=None,
                     color=[255, 255, 255]):
     '''
@@ -151,7 +150,8 @@ def paintSuperpixel(superpixel, target, image=None, index=None,
     return target
 
 
-def computeSuperpixelColor(image, superpixel):
+@jit(nopython=True)
+def computeSuperpixelColor(labImage, superpixel):
     '''
     Compute the centroid color in a CIELab space for each superpixel.
 
@@ -169,22 +169,22 @@ def computeSuperpixelColor(image, superpixel):
 
     '''
 
-    superpixelColor = np.zeros((superpixel.max()+1, 3))
+    superpixel_f = superpixel.flatten()
+    L_values = labImage[:, :, 0].flatten()
+    a_values = labImage[:, :, 1].flatten()
+    b_values = labImage[:, :, 2].flatten()
 
-    for i in range(1, superpixel.max()+1):
-        colorSum = []
-        for j in range(0, np.shape(image)[0]):
-            for k in range(0, np.shape(image)[1]):
-                if superpixel[j][k] == i:
-                    colorSum.append(image[j][k])
+    superpixel_max = superpixel.max()+1
 
-        colorSum = np.reshape(colorSum, (np.shape(colorSum)[0],
-                                         np.shape(colorSum)[1]))
-        superpixelColor[i] = [np.median(colorSum[:, 0]),
-                              np.median(colorSum[:, 1]),
-                              np.median(colorSum[:, 2])]
+    superpixelColor = [(0, 0, 0)]
 
-    print('Superpixel colors computed')
+    for i in range(1, superpixel_max):
+        L = np.nanmedian(np.where((superpixel_f == i), L_values, np.nan))
+        a = np.nanmedian(np.where((superpixel_f == i), a_values, np.nan))
+        b = np.nanmedian(np.where((superpixel_f == i), b_values, np.nan))
+
+        superpixelColor.append((L, a, b))
+
     return superpixelColor
 
 
@@ -282,48 +282,6 @@ def compareSuperpixel(superpixelColor, target, tempColor, maxDist):
         return True
     else:
         return False
-
-
-'''
-def growingSuperpixel(superpixel, superpixelColor, image, mask, neighbors,
-seed, target, tempColor, classe, maxDist, canvas = False):
-
-    # Given a target superpixel index the neighbors are analysed if within
-    # the max color distance.
-    #Recursive depth search version. (not used)
-
-    if visited[target] == True:
-        #print('exit visited ' + str(target))
-        return False
-    if superpixelClass[target] > 0:
-        #print('exit marked')
-        return False
-
-    if compareSuperpixel(superpixelColor, target, tempColor, sigmaH, sigmaS,
-    sigmaV) == True:
-        #print('Comparing ' + str(target) + ' ' + str(seed))
-        superpixelClass[target] = classe
-        visited[target] = True
-        tempColor = np.insert(tempColor, 0, superpixelColor[target], 0)
-        tempColor = np.reshape(tempColor, (int(np.size(tempColor)/3),3))
-        if classe == 1: color = [255,0,0]
-        if classe == 2: color = [0,255,0]
-        if classe == 3: color = [0,0,255]
-
-        mask = paintSuperpixel(superpixel, mask, image, target, color)
-        if canvas:
-            temp = updateCanvas(mask, hor, ver)
-    else:
-        visited[target] = True
-        #print('exit outside threshold ' + str(target) + ' ' + str(seed))
-        return False
-
-    temp = returnNeighbors(target, neighbors)
-    for k in temp:
-        growingSuperpixel(superpixel, superpixelColor, image, mask, neighbors,
-        seed, k, tempColor, classe, maxDist, canvas)
-    return
-'''
 
 
 def growingSuperpixelBreadth(superpixel, superpixelColor, image, mask,
@@ -451,6 +409,8 @@ while True:
                 image = cv2.imdecode(np.frombuffer(file, np.uint8), 1)
                 # 0 in the case of grayscale images
 
+                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
                 # image = cv2.bilateralFilter(image, 10, 75, 75)
                 mask = np.copy(image)
                 original = np.copy(image)
@@ -522,10 +482,11 @@ while True:
             with open(address) as csv_file:
                 csv_reader = csv.reader(csv_file, delimiter=';', )
                 line_count = 0
+                seed_image = np.copy(image)
                 for row in csv_reader:
                     if line_count != 0:
                         # image[1,2] = red
-                        # image[int(row[1]),int(row[0])] = red
+                        seed_image[int(row[1]),int(row[0])] = (255, 0, 0)
                         # image = cv2.circle(image, (int(row[1])-1,
                         #                    int(row[0])-1), 5, red, -1)
                         target = superpixel[int(row[0])-1, int(row[1])-1]
@@ -540,6 +501,34 @@ while True:
                         # image = cv2.circle(image, (500,500), 10, red, 3)
                         line_count = line_count + 1
                     line_count = line_count + 1
+                    
+    elif event == 'Save mask':
+
+        save_layout = [[
+            sg.InputText(visible=True, enable_events=True, key='fig_path',
+                         size=(10, 50)),
+            sg.FileSaveAs(
+                key='fig_save',
+                file_types=(('PNG', '.png'), ('JPG', '.jpg')),
+            ), sg.OK()
+        ]]
+        save_window = sg.Window('Demo Application', save_layout, finalize=True)
+
+        while True:  # Event Loop
+            save_event, save_values = save_window.Read()
+            print(save_event)
+            if (save_event == 'fig_path') and (save_values['fig_path'] != ''):
+                save_address = save_values['fig_path']
+            if save_event is None or save_event == "OK":
+                break
+
+        save_window.Close()
+
+        if save_address != None:
+            try:
+                cv2.imwrite(save_address, cv2.cvtColor(mask, cv2.COLOR_RGB2BGR))
+            except Exception:
+                print("Impossible to save")
 
     elif event == '_Sl_horizontal_' or event == '_Sl_vertical_':
 
