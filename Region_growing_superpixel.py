@@ -117,7 +117,7 @@ def updateCanvas(image, hor, ver):
         print("Update canvas " + str(e))
     return image
 
-
+@jit(nopython=True)
 def paintSuperpixel(superpixel, target, image=None, index=None,
                     color=[255, 255, 255]):
     '''
@@ -143,10 +143,13 @@ def paintSuperpixel(superpixel, target, image=None, index=None,
 
     '''
 
-    for i in range(0, np.shape(image)[0]-1):
-        for j in range(0, np.shape(image)[1]-1):
-            if superpixel[i, j] == index:
-                target[i, j] = color
+    target[:, :, 0] = np.where((superpixel == index), color[0],
+                               target[:, :, 0])
+    target[:, :, 1] = np.where((superpixel == index), color[1],
+                               target[:, :, 1])
+    target[:, :, 2] = np.where((superpixel == index), color[2],
+                               target[:, :, 2])
+
     return target
 
 
@@ -264,7 +267,7 @@ def compareSuperpixel(superpixelColor, target, tempColor, maxDist):
     '''
 
     # L0 = tempColor[0, 0]
-    L0 = np.median(tempColor[0, 0])
+    L0 = np.median(tempColor[:, 0])
     L1 = superpixelColor[target][0]
 
     # a0 = tempColor[0,1]  #np.mean(tempColor[:,1])
@@ -335,7 +338,7 @@ def growingSuperpixelBreadth(superpixel, superpixelColor, image, mask,
 
     mask = paintSuperpixel(superpixel, mask, image, target, color)
 
-    while queue:
+    while queue:  # queue
         s = queue.pop(0)
         # print("Pop " + str(s))
         temp = returnNeighbors(s, neighbors)
@@ -357,9 +360,9 @@ def growingSuperpixelBreadth(superpixel, superpixelColor, image, mask,
                             temp = updateCanvas(mask, hor, ver)
                         superpixelClass[k] = classe
             visited[k] = True
-        print(np.size(queue))
+        # print(np.size(queue))
         if np.size(queue) > 50:
-            print(queue)
+            # print(queue)
             queue = []
     return
 
@@ -486,9 +489,11 @@ while True:
                 for row in csv_reader:
                     if line_count != 0:
                         # image[1,2] = red
-                        seed_image[int(row[1]),int(row[0])] = (255, 0, 0)
-                        # image = cv2.circle(image, (int(row[1])-1,
-                        #                    int(row[0])-1), 5, red, -1)
+                        # image[int(row[1])-1, int(row[0])-1] = (255, 0, 0)
+                        seed_image = cv2.circle(seed_image,
+                                                (int(row[1])-1,
+                                                 int(row[0])-1), 5,
+                                                (255, 0, 0), 0)
                         target = superpixel[int(row[0])-1, int(row[1])-1]
                         tempColor = superpixelColor[target]
                         tempColor = np.reshape(tempColor, (int(np.size(
@@ -496,12 +501,15 @@ while True:
                         growingSuperpixelBreadth(superpixel, superpixelColor,
                                                  image, mask, neighbors,
                                                  target, target, tempColor,
-                                                 classe, maxDist, True)
+                                                 classe, maxDist, False)
+                        temp = updateCanvas(mask, hor, ver)
                         # pontos.append([int(row[1]),int(row[0])])
                         # image = cv2.circle(image, (500,500), 10, red, 3)
                         line_count = line_count + 1
                     line_count = line_count + 1
-                    
+                cv2.imwrite(address+".png",
+                            cv2.cvtColor(seed_image, cv2.cv2.COLOR_BGR2RGB))
+
     elif event == 'Save mask':
 
         save_layout = [[
@@ -579,7 +587,8 @@ while True:
             growingSuperpixelBreadth(superpixel, superpixelColor, image, mask,
                                      neighbors, superpixel[y, x],
                                      superpixel[y, x], tempColor, classe,
-                                     maxDist, True)
+                                     maxDist, False)
+            temp = updateCanvas(mask, hor, ver)
         except Exception as e:
             print(e)
 
