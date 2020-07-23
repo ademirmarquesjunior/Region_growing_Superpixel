@@ -60,11 +60,12 @@ Use "Save masks" to save each mask.
 
 Next iterations expect to improve and incorporate:
 
- - a superpixel method based on Iterative Spanning Forest
- - save masks routine (change folder)
+ - A superpixel method based on Iterative Spanning Forest
+ - Save and load georreferenced files
+ - Save masks routine (change folder)
  - MVC structure
- - user interface and usability
- - two clicks implementation with least path algorithm (fork?)
+ - User interface and usability
+ - Two clicks implementation with least path algorithm (fork?)
  
  
 ## Credits	
