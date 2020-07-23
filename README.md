@@ -39,7 +39,7 @@ This software require Python 3.x and the following libraries:
      
 The use workflow follow the order: Load image -> Generate or Load superpixels -> User click in the desired regions -> region growing operation (optional) -> change or save masks.
  
-To access the main functions go to menu bar and then in "Files", to load each file.
+To access the main functions go to menu bar and then in "Files", to load each file. Test images are available in the "examples" folder.
 
 <img src="https://github.com/ademirmarquesjunior/Region_growing_Superpixel/blob/master/docs/images/menu_bar.png" width="500" alt="Segmented image">
 
