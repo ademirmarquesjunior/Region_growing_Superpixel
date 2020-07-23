@@ -39,7 +39,7 @@ This software require Python 3.x and the following libraries:
      
 The use workflow follow the order: Load image -> Generate or Load superpixels -> User click in the desired regions -> region growing operation (optional) -> change or save masks.
  
-To access the main functions go to menu bar and then in "Files", to load each file.
+To access the main functions go to menu bar and then in "Files", to load each file. Test images are available in the "examples" folder.
 
 <img src="https://github.com/ademirmarquesjunior/Region_growing_Superpixel/blob/master/docs/images/menu_bar.png" width="500" alt="Segmented image">
 
@@ -60,11 +60,12 @@ Use "Save masks" to save each mask.
 
 Next iterations expect to improve and incorporate:
 
- - a superpixel method based on Iterative Spanning Forest
- - save masks routine (change folder)
+ - A superpixel method based on Iterative Spanning Forest
+ - Save and load georreferenced files
+ - Save masks routine (change folder)
  - MVC structure
- - user interface and usability
- - two clicks implementation with least path algorithm (fork?)
+ - User interface and usability
+ - Two clicks implementation with least path algorithm (fork?)
  
  
 ## Credits	
