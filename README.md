@@ -61,6 +61,7 @@ Next iterations expect to improve and incorporate:
 
  - a superpixel method based on Iterative Spanning Forest
  - save masks routine (change folder)
+ - MVC structure
  - user interface and usability
  - two clicks implementation with least path algorithm (fork?)
  
