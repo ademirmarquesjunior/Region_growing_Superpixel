@@ -41,12 +41,13 @@ The use workflow follow the order: Load image -> Generate or Load superpixels ->
  
 To access the main functions go to menu bar and then in "Files", to load each file.
 
-
+<img src="https://github.com/ademirmarquesjunior/Region_growing_Superpixel/blob/master/docs/images/menu_bar.png" width="500" alt="Segmented image">
 
 To generate superpixel data go to "Generate superpixels" that opens a new window asking the method (in this version only the SLIC method is available) to create the superpixel and number of superpixels desired.
 
 After loading or generating a superpixel file click and drag to segment an area or clik in the image and click in "Expand" button considering the class selected. The number given in the box is the maximum dissimilarity allowed when incorporate superpixel neighbors.
 
+<img src="https://github.com/ademirmarquesjunior/Region_growing_Superpixel/blob/master/docs/images/image_segmented.png" width="500" alt="Segmented image">
 
 Select a class and use "Fill" to segment rest of the image that is not marked by other classes.
 
