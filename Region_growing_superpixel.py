@@ -40,8 +40,8 @@ layout = [[sg.Menu(menu_def, tearoff=True)],
                  sg.Button('Class 3', button_color=['white', 'blue'])],
                 [sg.Text('Class 1 selected', key='_Tx_selected_')],
                 [sg.Input(key='_In_sigmaH_', size=(5, 5), default_text='19'),
-                 sg.Button('Extrapolate'), sg.Button('Fill'),
-                 sg.Button('Reset')], ])],
+                 sg.Button('Expand'), sg.Button('Fill'),
+                 sg.Button('Clean')], ])],
                 ])],
           [sg.Slider(range=(0, 100), orientation='h', size=(40, 10),
                      enable_events=True, disable_number_display=True,
@@ -117,7 +117,7 @@ def updateCanvas(image, hor, ver):
         print("Update canvas " + str(e))
     return image
 
-@jit(nopython=True)
+@jit
 def paintSuperpixel(superpixel, target, image=None, index=None,
                     color=[255, 255, 255]):
     '''
@@ -401,7 +401,7 @@ while True:
 
     if event is None or event == 'Exit':
         break
-    elif event == 'Open image':
+    elif event == 'Open image':  # -------------------------------------------
 
         address = sg.PopupGetFile('Document to open')
         # address = 'D:/Ademir/Coding/datasets/image1/0055.png'
@@ -425,7 +425,7 @@ while True:
         except Exception as e:
             sg.Popup(e)
 
-    elif event == 'Open Superpixel':
+    elif event == 'Open Superpixel':  # --------------------------------------
 
         address = sg.PopupGetFile('Document to open')
 
@@ -438,7 +438,7 @@ while True:
         except Exception as e:
             sg.Popup(e)
 
-    elif event == 'Generate Superpixels':
+    elif event == 'Generate Superpixels':  # ---------------------------------
 
         # View popup to receive Superpixel parameters
         sp_layout = [[sg.Text('Some text on Row 1')],
@@ -468,7 +468,12 @@ while True:
         except Exception as e:
             print(e)
 
-    elif event == 'Load CSV file':
+    elif event == 'Load CSV file':  # ----------------------------------------
+
+        try:
+            maxDist = float(values["_In_sigmaH_"])
+        except Exception as e:
+            print(e)
 
         address = sg.PopupGetFile('Document to open')
 
@@ -510,7 +515,7 @@ while True:
                 cv2.imwrite(address+".png",
                             cv2.cvtColor(seed_image, cv2.cv2.COLOR_BGR2RGB))
 
-    elif event == 'Save mask':
+    elif event == 'Save mask':  # --------------------------------------------
 
         save_layout = [[
             sg.InputText(visible=True, enable_events=True, key='fig_path',
@@ -527,6 +532,7 @@ while True:
             print(save_event)
             if (save_event == 'fig_path') and (save_values['fig_path'] != ''):
                 save_address = save_values['fig_path']
+                save_window.Close()
             if save_event is None or save_event == "OK":
                 break
 
@@ -560,7 +566,8 @@ while True:
             temp = updateCanvas(original, hor, ver)
         except Exception as e:
             print(e)
-    elif event == 'Extrapolate':
+
+    elif event == 'Expand':  # ------------------------------------------
 
         try:
             maxDist = float(values["_In_sigmaH_"])
@@ -592,7 +599,7 @@ while True:
         except Exception as e:
             print(e)
 
-    elif event == 'Fill':
+    elif event == 'Fill':  # -------------------------------------------------
 
         if active_class == 'class1':
             for i in range(0, np.shape(image)[0]-1):
@@ -637,7 +644,7 @@ while True:
 
         temp = updateCanvas(mask, hor, ver)
 
-    elif event == 'Reset':
+    elif event == 'Clean':  # ------------------------------------------------
         superpixelClass = np.zeros((superpixel.max()+1))
         visited = np.full((superpixel.max()+1), False)
 
@@ -664,7 +671,7 @@ while True:
 
         temp = updateCanvas(mask, hor, ver)
 
-    elif event == '_Canvas1_':
+    elif event == '_Canvas1_':  # --------------------------------------------
         position = values['_Canvas1_']
 
         try:
