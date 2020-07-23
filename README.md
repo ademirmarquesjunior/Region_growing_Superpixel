@@ -1,7 +1,7 @@
 # Region_growing_Superpixel
 Technique to implement region growing segmentation in Superpixel data.
 
-This program developed in Python generates and loads superpixel data (grouped pixel regions) allowing faster segmentation to create masks of the desired features. It converts the superpixel data in a graph of interconnected objects to determine the superpixel neighborhood. The region growing algorithm uses color similarity to limit growing while navigating the superpixel graph. The RGB image data is converted to CIELab color space where then each superpixel has its CIELab color computed based on the centroid position given the median of the L, a, and b coordinates of the CIELab color space. The similarity between superpixels is given by the euclidean distance (linear distance in a 3d space), where the user establishes the maximum distance. The user has the option to manually segment the desired pixel (clicking and dragging), manually chose a superpixel for region growing, and load a CSV file with seed positions.
+This program developed in Python (in prototype state) generates and loads superpixel data (grouped pixel regions) allowing faster segmentation to create masks of the desired features. It converts the superpixel data in a graph of interconnected objects to determine the superpixel neighborhood. The region growing algorithm uses color similarity to limit growing while navigating the superpixel graph. The RGB image data is converted to CIELab color space where then each superpixel has its CIELab color computed based on the centroid position given the median of the L, a, and b coordinates of the CIELab color space. The similarity between superpixels is given by the euclidean distance (linear distance in a 3d space), where the user establishes the maximum distance. The user has the option to manually segment the desired pixel (clicking and dragging), manually chose a superpixel for region growing, and load a CSV file with seed positions.
 
 To implement the region growing, records of visited and already segmented superpixels are stored to avoid visiting the same superpixel over and over. Also, the segmentation is drawn to a mask to maintain the original image in memory for comparison.
 The region growing method starts by loading seed information, either by obtaining an XY position of a mouse click on the designed interface or by loading CSV files with multiple seeds.
@@ -55,6 +55,15 @@ Use "Clean" to clean the segmentation done with an active class.
 
 Use "Save masks" to save each mask.
 
+## TODO
+
+Next iterations expect to improve and incorporate:
+
+ - a superpixel method based on Iterative Spanning Forest
+ - save masks routine (change folder)
+ - user interface and usability
+ - two clicks implementation with least path algorithm (fork?)
+ 
  
 ## Credits	
 This work is credited to the [Vizlab | X-Reality and GeoInformatics Lab](http://vizlab.unisinos.br/) and the following developers:	[Ademir Marques Junior](https://www.researchgate.net/profile/Ademir_Junior).
