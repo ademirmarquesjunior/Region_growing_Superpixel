@@ -29,6 +29,7 @@ menu_def = [['File', ['Open image', 'Open Superpixel', 'Generate Superpixels',
 layout = [[sg.Menu(menu_def, tearoff=True)],
           [sg.Graph(canvas_size=(500, 500), graph_bottom_left=(0, 0),
                     enable_events=True, drag_submits=True,
+                    background_color='black',
                     graph_top_right=(500, 500), key="_Canvas1_"),
            sg.Slider(range=(100, 0), orientation='v', size=(20, 10),
                      enable_events=True, disable_number_display=True,
@@ -244,6 +245,19 @@ def setNeighbors(superpixel):
     return neighbors
 
 
+def compute_color_distance(color_0, color_1):
+
+    L0, a0, b0 = color_0
+    L1, a1, b1 = color_1
+
+    dist = math.sqrt(math.pow((L1-L0), 2) + math.pow((a1-a0), 2)
+                     + math.pow((b1-b0), 2))
+
+    return dist
+
+
+
+
 def compareSuperpixel(superpixelColor, target, tempColor, maxDist):
     '''
     Compare two superpixel colors by computing the distance in a CIELab space.
@@ -278,8 +292,7 @@ def compareSuperpixel(superpixelColor, target, tempColor, maxDist):
     b0 = np.median(tempColor[:, 2])
     b1 = superpixelColor[target][2]
 
-    dist = math.sqrt(math.pow((L1-L0), 2) + math.pow((a1-a0), 2)
-                     + math.pow((b1-b0), 2))
+    dist = compute_color_distance((L0, a0, b0), (L1, a1, b1))
 
     if dist < maxDist:
         return True
@@ -367,6 +380,46 @@ def growingSuperpixelBreadth(superpixel, superpixelColor, image, mask,
     return
 
 
+def least_path(neighbors, start, end, labImage, superpixelColor):
+
+    visited = []
+    unvisited = list(range(np.shape(neighbors)[0]))
+
+    path_cost = np.full((np.size(unvisited), 2), np.inf)
+
+    start = 0
+    path_cost[start, 0] = 0
+
+    while np.size(unvisited) != 0:
+
+        current_vertex = unvisited[np.argmin(path_cost[unvisited, 0])]
+
+        if current_vertex == end:
+            exit()
+
+        unvisited_neighbour = np.intersect1d(
+            returnNeighbors(current_vertex, neighbors), unvisited)
+
+        for i in unvisited_neighbour:
+            dist = compute_color_distance(superpixelColor[current_vertex],
+                                          superpixelColor[i])
+            if dist + path_cost[current_vertex, 0] < path_cost[i, 0]:
+                path_cost[i] = (dist + path_cost[current_vertex, 0]), current_vertex
+
+        visited.append(current_vertex)
+        unvisited.remove(current_vertex)
+
+    # backtrack
+    backtrack = []
+    backtrack.append(current_vertex)
+    while current_vertex != start:
+
+        current_vertex = np.uint(path_cost[current_vertex][1])
+        backtrack.append(current_vertex)
+
+    return backtrack
+
+
 def showImage(image):
     '''
     Open a image with the OS image viewer
@@ -441,7 +494,7 @@ while True:
     elif event == 'Generate Superpixels':  # ---------------------------------
 
         # View popup to receive Superpixel parameters
-        sp_layout = [[sg.Text('Some text on Row 1')],
+        sp_layout = [[sg.Text('Insert the number of superpixel desired.')],
                      [sg.Text('Quantity:'), sg.InputText()],
                      [sg.Button('Ok'), sg.Button('Cancel')]]
 
