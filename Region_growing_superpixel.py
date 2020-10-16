@@ -20,6 +20,7 @@ from numba import jit
 
 
 #  View functions and definitions
+SCREEN_SIZE = 500
 
 menu_def = [['File', ['Open image', 'Open Superpixel', 'Generate Superpixels',
                       'Load CSV file', 'Save mask', 'Exit']],
@@ -27,10 +28,16 @@ menu_def = [['File', ['Open image', 'Open Superpixel', 'Generate Superpixels',
 
 
 layout = [[sg.Menu(menu_def, tearoff=True)],
-          [sg.Graph(canvas_size=(500, 500), graph_bottom_left=(0, 0),
+          [sg.Button("process", size=(6, 2), key="process"),
+           sg.Button("drag", size=(4, 2), key="drag"),
+           sg.Button("brush", size=(4, 2), key="brush"),
+           sg.Button("grow", size=(4, 2), key="grow"),
+           sg.Button("path", size=(4, 2), key="path")
+           ],
+          [sg.Graph(canvas_size=(SCREEN_SIZE, SCREEN_SIZE), graph_bottom_left=(0, 0),
                     enable_events=True, drag_submits=True,
                     background_color='black',
-                    graph_top_right=(500, 500), key="_Canvas1_"),
+                    graph_top_right=(SCREEN_SIZE, SCREEN_SIZE), key="_Canvas1_"),
            sg.Slider(range=(100, 0), orientation='v', size=(20, 10),
                      enable_events=True, disable_number_display=True,
                      default_value=0, key="_Sl_vertical_"),
@@ -59,6 +66,11 @@ x = 0
 maxDist = 19
 active_class = 'class1'
 classe = 1
+mode = 0  # 0: drag; 1: point; 2: grow; 3: path
+
+click = -1
+first_click = []
+second_click = []
 
 tempColor = []
 
@@ -112,7 +124,7 @@ def updateCanvas(image, hor, ver):
         encoded = base64.b64encode(buffered.getvalue())
 
         # Load encoded image buffer to canvas
-        canvas1.DrawImage(data=encoded, location=(0, 500))
+        canvas1.DrawImage(data=encoded, location=(0, SCREEN_SIZE))
         canvas1.Update()
     except Exception as e:
         print("Update canvas " + str(e))
@@ -380,14 +392,14 @@ def growingSuperpixelBreadth(superpixel, superpixelColor, image, mask,
     return
 
 
-def least_path(neighbors, start, end, labImage, superpixelColor):
+def least_path(neighbors, start, end, superpixelColor):
 
     visited = []
     unvisited = list(range(np.shape(neighbors)[0]))
 
     path_cost = np.full((np.size(unvisited), 2), np.inf)
 
-    start = 0
+    # start = 0
     path_cost[start, 0] = 0
 
     while np.size(unvisited) != 0:
@@ -395,7 +407,7 @@ def least_path(neighbors, start, end, labImage, superpixelColor):
         current_vertex = unvisited[np.argmin(path_cost[unvisited, 0])]
 
         if current_vertex == end:
-            exit()
+            break
 
         unvisited_neighbour = np.intersect1d(
             returnNeighbors(current_vertex, neighbors), unvisited)
@@ -404,7 +416,8 @@ def least_path(neighbors, start, end, labImage, superpixelColor):
             dist = compute_color_distance(superpixelColor[current_vertex],
                                           superpixelColor[i])
             if dist + path_cost[current_vertex, 0] < path_cost[i, 0]:
-                path_cost[i] = (dist + path_cost[current_vertex, 0]), current_vertex
+                path_cost[i] = (dist +
+                                path_cost[current_vertex, 0]), current_vertex
 
         visited.append(current_vertex)
         unvisited.remove(current_vertex)
@@ -418,6 +431,22 @@ def least_path(neighbors, start, end, labImage, superpixelColor):
         backtrack.append(current_vertex)
 
     return backtrack
+
+
+def two_points_drawing(mask, neighbors, start, end, superpixelColor):
+    if classe == 1:
+        color = [255, 0, 0]
+    if classe == 2:
+        color = [0, 255, 0]
+    if classe == 3:
+        color = [0, 0, 255]
+
+    path = least_path(neighbors, start, end, superpixelColor)
+
+    for target in path:
+        mask = paintSuperpixel(superpixel, mask, image, target, color)
+
+    return mask
 
 
 def showImage(image):
@@ -521,6 +550,16 @@ while True:
         except Exception as e:
             print(e)
 
+    elif event == 'drag':
+        mode = 0
+    elif event == 'brush':
+        mode = 1
+    elif event == 'grow':
+        mode = 2
+    elif event == 'path':
+        print("path mode")
+        mode = 3
+
     elif event == 'Load CSV file':  # ----------------------------------------
 
         try:
@@ -562,7 +601,7 @@ while True:
                                                  classe, maxDist, False)
                         temp = updateCanvas(mask, hor, ver)
                         # pontos.append([int(row[1]),int(row[0])])
-                        # image = cv2.circle(image, (500,500), 10, red, 3)
+                        # image = cv2.circle(image, (SCREEN_SIZE,SCREEN_SIZE), 10, red, 3)
                         line_count = line_count + 1
                     line_count = line_count + 1
                 cv2.imwrite(address+".png",
@@ -724,6 +763,17 @@ while True:
 
         temp = updateCanvas(mask, hor, ver)
 
+    elif event == 'process':
+        try:
+            neighbors = setNeighbors(superpixel)
+            labImage = cv2.cvtColor(image, cv2.COLOR_BGR2Lab)
+            superpixelColor = computeSuperpixelColor(labImage, superpixel)
+            superpixelClass = np.zeros((superpixel.max()+1))
+            visited = np.full((superpixel.max()+1), False)
+            mask = np.copy(image)
+        except Exception as e:
+            print(e)
+
     elif event == '_Canvas1_':  # --------------------------------------------
         position = values['_Canvas1_']
 
@@ -754,15 +804,67 @@ while True:
                     classe = 3
                     color = [0, 0, 255]
 
-                mask = paintSuperpixel(superpixel, mask, image,
-                                       superpixel[y, x], color)
-                temp = updateCanvas(mask, hor, ver)
+                if mode == 1:
+                    mask = paintSuperpixel(superpixel, mask, image,
+                                           superpixel[y, x], color)
+                    temp = updateCanvas(mask, hor, ver)
+                if mode == 2:
+                    try:
+                        tempColor = superpixelColor[superpixel[y, x]]
+                        tempColor = np.reshape(tempColor, (
+                            int(np.size(tempColor)/3), 3))
+                        print("Origin " + str(tempColor[:, 2][0]))
+
+                        growingSuperpixelBreadth(superpixel, superpixelColor,
+                                                 image, mask, neighbors,
+                                                 superpixel[y, x],
+                                                 superpixel[y, x], tempColor,
+                                                 classe, maxDist, False)
+                        temp = updateCanvas(mask, hor, ver)
+                    except Exception as e:
+                        print(e)
+
             except Exception as e:
                 print(e)
 
         except Exception as e:
             print(e)
+    elif event == "_Canvas1_+UP":  # -----------------------------------------
+        try:
+            size = canvas1.CanvasSize
+            positionX = int(np.shape(image)[1]/100*hor)
+            positionY = int(np.shape(image)[0]/100*ver)
 
-    # print(event, values)
+            if positionX > np.shape(image)[1]-size[1]:
+                positionX = np.shape(image)[1]-size[1]-1
+            if positionY > (np.shape(image)[0]-size[0]):
+                positionY = np.shape(image)[0]-size[0]-1
+
+            x = positionX+position[0]
+            y = positionY+abs(position[1]-size[1])
+            print(x, y)
+
+            if mode == 3:
+                print("_______path")
+                click += 1
+                if click == 0:
+                    first_click = [y, x]
+                    mask = paintSuperpixel(superpixel, mask, image,
+                                           superpixel[y, x], color)
+                    temp = updateCanvas(mask, hor, ver)
+                elif click == 1:
+                    second_click = [y, x]
+                    mask = two_points_drawing(mask, neighbors,
+                                              superpixel[first_click[0],
+                                                         first_click[1]],
+                                              superpixel[second_click[0],
+                                                         second_click[1]],
+                                              superpixelColor)
+                    temp = updateCanvas(mask, hor, ver)
+                    click = -1
+        except Exception as e:
+            print(e)
+
+    print(event, values)
 
 window.Close()
